@@ -1,0 +1,234 @@
+########################################
+## CONFIG | Flink Configs
+########################################
+image:
+  # repository: apache/flink
+  # tag: 1.13.2
+  # pullPolicy: IfNotPresent
+  repository: flink
+  tag: 2.0.0
+  # pullPolicy: Always
+  # pullSecret: ""
+  # uid: 9999
+  # gid: 0
+
+flink:
+
+  ## Configs for the Flink container image
+  ##
+
+  ## Reactive mode configuration
+  reactive:
+    enabled: false
+  
+  ## The default parallelism used when no parallelism is specified anywhere
+  ##
+  parallelism: 1
+
+  ## The base interval setting. To enable checkpointing, you need to set this value larger than 0.
+  ##
+  checkpointInterval: 10s
+
+  ## The Deployment mode to run Flink (One of 'application' or 'session'. Defaults to 'session')
+  ##
+  mode: session
+
+########################################
+## CONFIG | Kubernetes RBAC
+########################################
+rbac:
+  ## If Kubernetes RBAC resources are created
+  ## These allow the service account to create/delete/update ConfigMaps in the Flink namespace,
+  ## which is required by the JobManager and TaskManager
+  ##
+  create: true
+
+########################################
+## CONFIG | Kubernetes ServiceAccount
+########################################
+
+serviceAccount:
+  ## If a Kubernetes ServiceAccount is created
+  ## If `false`, you must create the service account outside this chart with name: `serviceAccount.name`
+  ##
+  create: true
+
+  ## The name of the ServiceAccount
+  ## By default the name is generated using the `flink.serviceAccountName` template in `_helpers.tpl`
+  ##
+  name: ""
+
+  ## Annotations for the ServiceAccount
+  ##
+  annotations: {}
+
+########################################
+## COMPONENT | Flink JobManager
+########################################
+
+jobmanager:
+  ## The number of JobManager Pods to run (Define this >1 for high availabilty)
+  ##
+  replicas: 1
+
+  ## Annotations for the JobManager Deployment
+  ##
+  annotations: {}
+
+  ## Labels for the JobManager Deployment
+  ##
+  labels: {}
+  
+  ## Pod labels for the JobManager Deployment
+  ##
+  podLabels: {}
+
+  ## Configs for the web Pods' liveness probe
+  ##
+  livenessProbe:
+    enabled: true
+    initialDelaySeconds: 30
+    periodSeconds: 60
+
+  ## Resource requests / limits for the JobManager Pod
+  ##
+  resources: {}
+
+  service:
+    annotations: {}
+
+  ## Config for the JobManager REST service
+  ##
+  # =========================================================> AQUI
+  rest:
+    # enabled: false
+    enabled: true # Habilitar el servicio REST
+    annotations: {}
+    externalPort: 8081
+    type: NodePort
+    nodePort:
+      http: ""
+  # =========================================================> AQUI
+
+  # =========================================================> AQUI
+  ## Contenedores adicionales para el JobManager
+  # extraContainers:
+  #   - name: git-sync
+  #     image: k8s.gcr.io/git-sync:v3.6.0
+  #     env:
+  #       - name: GIT_SYNC_REPO
+  #         value: "https://github.com/tu-usuario/flink-scripts.git"  # Cambiar a tu repositorio
+  #       - name: GIT_SYNC_BRANCH
+  #         value: "main"                                           # Cambiar a tu rama
+  #       - name: GIT_SYNC_DEPTH
+  #         value: "1"
+  #       - name: GIT_SYNC_ROOT
+  #         value: "/git"
+  #       - name: GIT_SYNC_PERIOD
+  #         value: "60"  # Sincroniza cada 60 segundos
+  #     volumeMounts:
+  #       - name: git-repo
+  #         mountPath: /git
+
+  ## Volúmenes adicionales para el JobManager
+  # extraVolumes:
+  #   - name: git-repo
+  #     emptyDir: {}
+
+  ## Montajes de volúmenes adicionales para el JobManager
+  # extraVolumeMounts:
+  #   - name: git-repo
+  #     mountPath: /opt/flink/scripts
+  # =========================================================> AQUI
+
+########################################
+## COMPONENT | Flink TaskManager
+########################################
+
+taskmanager:
+  ## The number of TaskManager Pods to run
+  ##
+  # replicas: 2
+  replicaCount: 2
+
+  ## Annotations for the TaskManager Deployment
+  ##
+  annotations: {}
+
+  ## Labels for the TaskManager Deployment
+  ##
+  labels: {}
+
+  ## Pod labels for the TaskManager Deployment
+  ##
+  podLabels: {}
+
+  ## Configs for the web Pods' liveness probe
+  ##
+  livenessProbe:
+    enabled: true
+    initialDelaySeconds: 30
+    periodSeconds: 60
+
+  ## Resource requests / limits for the TaskManager Pod
+  ##
+  resources: {}
+
+  # =========================================================> AQUI
+  ## Contenedores adicionales para el TaskManager
+  # extraContainers:
+  #   - name: git-sync
+  #     image: k8s.gcr.io/git-sync:v3.6.0
+  #     env:
+  #       - name: GIT_SYNC_REPO
+  #         value: "https://github.com/tu-usuario/flink-scripts.git"  # Cambiar a tu repositorio
+  #       - name: GIT_SYNC_BRANCH
+  #         value: "main"                                           # Cambiar a tu rama
+  #       - name: GIT_SYNC_DEPTH
+  #         value: "1"
+  #       - name: GIT_SYNC_ROOT
+  #         value: "/git"
+  #       - name: GIT_SYNC_PERIOD
+  #         value: "60"  # Sincroniza cada 60 segundos
+  #     volumeMounts:
+  #       - name: git-repo
+  #         mountPath: /git
+
+  ## Volúmenes adicionales para el TaskManager
+  # extraVolumes:
+  #   - name: git-repo
+  #     emptyDir: {}
+
+  ## Montajes de volúmenes adicionales para el TaskManager
+  # extraVolumeMounts:
+  #   - name: git-repo
+  #     mountPath: /opt/flink/scripts
+  # =========================================================> AQUI
+
+  ## The number of parallel operator or user function instances that a single TaskManager can run.
+  ##
+  numberOfTaskSlots: 1
+
+  queryState:
+    enabled: false
+    selector: {}
+  
+  ## Configuration for the HorizontalPodAutoscaler of the TaskManager pods.
+  ##
+  ## ____ EXAMPLE _______________
+  ##   autoscaling:
+  ##     enabled: true
+  ##     minReplicas: 2
+  ##     maxReplicas: 8
+  ##     metrics:
+  ##     - type: Resource
+  ##       resource:
+  ##         name: cpu
+  ##         target:
+  ##           type: Utilization
+  ##           averageUtilization: 80
+  autoscaling:
+    enabled: false
+    minReplicas: 2
+    maxReplicas: 8
+    metrics: []

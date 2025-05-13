@@ -1,61 +1,76 @@
-# Apache Flink Helm Chart
+## Prueba carranza
+Pipeline funcional para el demostrar capacidad de Flink.
 
-⚠️ This is a work in progress and should not be used in production ⚠️
+##### Pasos impuestos por alfredito:
+* Contruir imagen de flink con pyflink y demo.py
+* Aprovisionar en minikube flink kubernetes operator
+* Ejecutar prueba
+* Evidenciar
 
-This chart will bootstrap an Apache Flink deployment on a Kubernetes cluster using the Helm package manager.
 
-## Quickstart
+##### Detalle:
+* Build de imagen con pyflink y demo.py
+* Adicionar repo de helm para flink operator
+* Despliegue con values.yaml de flink
 
-### Install
 
-#### Step 1 - Add this Helm repository
+##### Instalación de repo para helm:
+* helm repo add flink-operator-repo https://downloads.apache.org/flink/flink-kubernetes-operator-1.11.0/
+* helm install flink-operator flink-operator-repo/flink-kubernetes-operator --namespace kube-ope-flink --create-namespace --values values.yaml
 
-```sh
-$ helm repo add nlecoy https://nlecoy.github.io/flink-chart/
-$ helm repo update
+* Deploy examples:
+    * kubectl apply -f wordcount-deployment.yaml -n kube-ope-flink
+    * kubectl port-forward service/basic-example-rest 8081:8081 -n kube-ope-flink
+* python example:
+    * kubectl apply -f python_example.yaml -n kube-ope-flink
+    * kubectl port-forward service/python-example-rest 8081:8081 -n kube-ope-flink
+
+minikube image load local-pyflink:revision
+
+* python iot (send):
+    * kubectl apply -f send.yaml -n kube-ope-flink
+    * kubectl port-forward service/send-rest 8081:8081 -n kube-ope-flink
+* python iot (send):
+    * kubectl apply -f receptor.yaml -n kube-ope-flink
+    * kubectl port-forward service/receptor-rest 8081:8081 -n kube-ope-flink
+
+***
+
+Datos importantes - Confluent:
+* topico creado: 
+    * Topic_name: topic-test-1
+    * Partitions: 6
+* key: 4INZQR6SVQ42QHQM
+* secret: mUhX+eIzA9JgIuUp1RepDjzDpFoP+6pfOpTqrGg2AJV6Dt4hqghjFFKMTBSDXzZi
+* output_message_format: JSON
+* number_task: 1
+
+* connector_class: DatagenSource
+* connector_name: DatagenSourceConnector_0
+
+```json
+{
+  "config": {
+    "connector.class": "DatagenSource",
+    "name": "DatagenSourceConnector_0",
+    "kafka.auth.mode": "KAFKA_API_KEY",
+    "kafka.api.key": "4INZQR6SVQ42QHQM",
+    "kafka.api.secret": "****************************************************************",
+    "kafka.topic": "topic-test-1",
+    "schema.context.name": "default",
+    "output.data.format": "JSON",
+    "quickstart": "ORDERS",
+    "max.interval": "1000",
+    "tasks.max": "1",
+    "value.converter.decimal.format": "BASE64",
+    "value.converter.replace.null.with.default": "true",
+    "value.converter.reference.subject.name.strategy": "DefaultReferenceSubjectNameStrategy",
+    "value.converter.schemas.enable": "false",
+    "errors.tolerance": "none",
+    "value.converter.value.subject.name.strategy": "TopicNameStrategy",
+    "key.converter.key.subject.name.strategy": "TopicNameStrategy",
+    "value.converter.ignore.default.for.nullables": "false",
+    "auto.restart.on.user.error": "true"
+  }
+}
 ```
-
-#### Step 2 - Install this chart
-
-```sh
-$ export FLINK_NAME="flink-cluster"
-$ export FLINK_NAMESPACE="flink"
-
-$ helm install \
-  $FLINK_NAME \
-  nlecoy/flink \
-  --namespace $FLINK_NAMESPACE \
-  --version "1.X.X" \
-  --values ./custom-values.yaml
-```
-
-#### Step 3 - Locally expose the Flink UI
-
-```sh
-kubectl port-forward svc/${FLINK_NAME}-jobmanager 8081:8081 --namespace $FLINK_NAMESPACE
-```
-
-### Upgrade
-
-> __WARNING__: always consult the [CHANGELOG](CHANGELOG) before upgrading chart versions
-
-```sh
-$ helm repo update
-
-$ helm upgrade \
-  $FLINK_NAME \
-  nlecoy/flink \
-  --namespace $FLINK_NAMESPACE \
-  --version "1.X.X" \
-  --values ./custom-values.yaml
-```
-
-### Uninstall:
-
-```sh
-$ helm uninstall $FLINK_NAME --namespace $FLINK_NAMESPACE
-```
-
-## License
-
-Distributed under the Apache 2.0 License. See [LICENSE](LICENSE) for more information.

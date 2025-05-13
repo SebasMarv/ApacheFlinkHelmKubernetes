@@ -21,7 +21,7 @@ kind: FlinkDeployment
 metadata:
   name: send-pod
 spec:
-  image: local-pyflink:revision
+  image: local-pyflink:test
   flinkVersion: v1_16
   flinkConfiguration:
     taskmanager.numberOfTaskSlots: "1"

@@ -1,67 +1,65 @@
-from pyflink.table.confluent import ConfluentSettings, ConfluentTools
-from pyflink.table import (
-    EnvironmentSettings,
-    StreamTableEnvironment,
-    TableDescriptor,
-    Schema,
-    DataTypes,
-)
-from pyflink.common import WatermarkStrategy
-import json
-import logging
+from pyflink.table import EnvironmentSettings, TableEnvironment
+from pyflink.table.descriptors import Kafka, Json, Schema
+from pyflink.table.descriptors import Jdbc
+from pyflink.table import DataTypes
 
-env_settings = EnvironmentSettings.in_streaming_mode()
-table_env = StreamTableEnvironment.create(environment_settings=env_settings)
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+# Configuración del tópico y broker de Kafka
+KAFKA_BROKER = 'pkc-619z3.us-east1.gcp.confluent.cloud:9092'
+TOPIC = 'iot-sensors'
 
-input_topic = "iot-sensors"
-group_id = "flink-postgres-consumer"
+# Configuración de PostgreSQL
+POSTGRES_URL = "jdbc:postgresql://host.docker.internal:5435/postgres"
+POSTGRES_DRIVER = "org.postgresql.Driver"
+POSTGRES_USERNAME = "postgres"
+POSTGRES_PASSWORD = "test1234"
+POSTGRES_TABLE = "iot_data"
 
-confluent_settings = ConfluentSettings.from_file("/opt/flink/usrlib/cloud.properties")
+def main():
+    # Crear el entorno de Flink
+    env_settings = EnvironmentSettings.in_streaming_mode()
+    table_env = TableEnvironment.create(environment_settings=env_settings)
 
-kafka_source_props = ConfluentTools.get_kafka_source_properties(confluent_settings, input_topic, group_id=group_id)
+    # Configurar el conector de Kafka
+    table_env.connect(
+        Kafka()
+        .version("universal")
+        .topic(TOPIC)
+        .property("bootstrap.servers", KAFKA_BROKER)
+        .property("security.protocol", "SASL_SSL")
+        .property("sasl.mechanism", "PLAIN")
+        .property("sasl.username", "4INZQR6SVQ42QHQM")
+        .property("sasl.password", "mUhX+eIzA9JgIuUp1RepDjzDpFoP+6pfOpTqrGg2AJV6Dt4hqghjFFKMTBSDXzZi")
+    ).with_format(
+        Json()
+        .fail_on_missing_field(False)
+        .derive_schema()
+    ).with_schema(
+        Schema()
+        .field("timestamp", DataTypes.STRING())
+        .field("sensor_id", DataTypes.STRING())
+        .field("temperature", DataTypes.FLOAT())
+        .field("humidity", DataTypes.FLOAT())
+    ).create_temporary_table("kafka_source")
 
-sensor_schema = Schema.new_builder() \
-    .column("timestamp", DataTypes.STRING()) \
-    .column("sensor_id", DataTypes.STRING()) \
-    .column("temperature", DataTypes.FLOAT()) \
-    .column("humidity", DataTypes.FLOAT()) \
-    .build()
+    # Configurar el conector de PostgreSQL
+    table_env.connect(
+        Jdbc()
+        .url(POSTGRES_URL)
+        .table(POSTGRES_TABLE)
+        .driver(POSTGRES_DRIVER)
+        .username(POSTGRES_USERNAME)
+        .password(POSTGRES_PASSWORD)
+    ).with_schema(
+        Schema()
+        .field("timestamp", DataTypes.STRING())
+        .field("sensor_id", DataTypes.STRING())
+        .field("temperature", DataTypes.FLOAT())
+        .field("humidity", DataTypes.FLOAT())
+    ).create_temporary_table("postgres_sink")
 
-source_table = TableDescriptor.for_connector("kafka") \
-    .format("json") \
-    .option("topic", input_topic) \
-    .options(kafka_source_props) \
-    .schema(sensor_schema) \
-    .build()
+    # Leer datos de Kafka y escribirlos en PostgreSQL
+    table_env.from_path("kafka_source").insert_into("postgres_sink")
+    table_env.execute("Consume IoT Data from Kafka and Store in PostgreSQL")
 
-table_env.create_table("raw_iot_data", source_table)
-
-postgres_url = "jdbc:postgresql://host.docker.internal:5435/postgres"
-postgres_driver = "org.postgresql.Driver"
-postgres_username = "postgres"
-postgres_password = "test1234"
-postgres_table = "iot_data"
-
-sink_table = TableDescriptor.for_connector("jdbc") \
-    .option("url", postgres_url) \
-    .option("driver", postgres_driver) \
-    .option("username", postgres_username) \
-    .option("password", postgres_password) \
-    .option("table-name", postgres_table) \
-    .schema(sensor_schema).build()
-
-table_env.create_table("postgres_sink", sink_table)
-
-insert_stmt = f"""
-INSERT INTO postgres_sink
-SELECT
-    CAST(TUMBLE_START(TO_TIMESTAMP(timestamp), INTERVAL '1 second') AS TIMESTAMP),
-    sensor_id,
-    temperature,
-    humidity
-FROM raw_iot_data
-"""
-
-# Ejecutar la consulta de inserción
-table_env.execute_sql(insert_stmt).wait()
+if __name__ == "__main__":
+    main()

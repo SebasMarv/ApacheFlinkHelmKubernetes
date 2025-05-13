@@ -16,24 +16,39 @@ Pipeline funcional para el demostrar capacidad de Flink.
 
 ##### Instalación de repo para helm:
 * helm repo add flink-operator-repo https://downloads.apache.org/flink/flink-kubernetes-operator-1.11.0/
-* helm install flink-operator flink-operator-repo/flink-kubernetes-operator --namespace kube-ope-flink --create-namespace --values values.yaml
+* helm install flink-operator flink-operator-repo/flink-kubernetes-operator --namespace flink --create-namespace --values values.yaml
 
-* Deploy examples:
-    * kubectl apply -f wordcount-deployment.yaml -n kube-ope-flink
-    * kubectl port-forward service/basic-example-rest 8081:8081 -n kube-ope-flink
-* python example:
-    * kubectl apply -f python_example.yaml -n kube-ope-flink
-    * kubectl port-forward service/python-example-rest 8081:8081 -n kube-ope-flink
+docker build --no-cache -t local-pyflink:revision .
+docker build -t local-pyflink:revision .
 
 minikube image load local-pyflink:revision
 
+* Borrar deploy y pods
+    * helm uninstall flink-operator -n kube-ope-flink 
+    * kubectl delete deployment send-pod -n kube-ope-flink
+
+* Borrar imagenes de minikube
+    * minikube ssh
+    * docker images
+    * docker rmi local-pyflink:revision
+    * exit
+
 * python iot (send):
-    * kubectl apply -f send.yaml -n kube-ope-flink
+    * kubectl apply -f send.yaml -n flink
     * kubectl port-forward service/send-rest 8081:8081 -n kube-ope-flink
 * python iot (send):
     * kubectl apply -f receptor.yaml -n kube-ope-flink
     * kubectl port-forward service/receptor-rest 8081:8081 -n kube-ope-flink
 
+kubectl exec -it send-pod-65f66b95d-xmwhb -n kube-ope-flink -- /bin/bash
+cd /opt/flink/usrlib/
+python3 send_iot.py
+
+python3 -m pip show apache-flink
+
+python3 -m pip uninstall apache-flink -y
+
+python3 -m pip install apache-flink==1.16.3
 ***
 
 Datos importantes - Confluent:

@@ -2,6 +2,17 @@ FROM flink:1.16
 #FROM apache/flink:2.0.0
 # install python3: it has updated Python to 3.9 in Debian 11 and so install Python 3.7 from source, \
 # it currently only supports Python 3.6, 3.7 and 3.8 in PyFlink officially.
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    libssl-dev \
+    zlib1g-dev \
+    libbz2-dev \
+    libffi-dev \
+    liblzma-dev \
+    wget \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
 RUN apt-get update -y && \
 apt-get install -y build-essential libssl-dev zlib1g-dev libbz2-dev libffi-dev && \
 wget https://www.python.org/ftp/python/3.7.9/Python-3.7.9.tgz && \
@@ -17,8 +28,26 @@ apt-get clean && \
 rm -rf /var/lib/apt/lists/*
 
 # install PyFlink
-RUN pip3 install "apache-flink>=1.16.0,<1.17.1"
+# RUN pip3 install "apache-flink>=1.16.0,<1.17.1"
+
+RUN pip3 install "apache-flink==1.16.3"
 RUN pip3 install kafka-python
+
+# # Agregar el repositorio oficial de Confluent y su clave GPG
+# RUN apt-get update && apt-get install -y --no-install-recommends \
+#     wget \
+#     software-properties-common && \
+#     wget -qO - https://packages.confluent.io/deb/7.3/archive.key | apt-key add - && \
+#     add-apt-repository "deb [arch=amd64] https://packages.confluent.io/deb/7.3 stable main" && \
+#     apt-get update && apt-get install -y --no-install-recommends \
+#     librdkafka-dev \
+#     gcc \
+#     g++ \
+#     && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Instalar confluent-kafka compatible con Python 3.7
+RUN pip3 install "confluent-kafka==1.9.2"
+
 #RUN pip3 install "apache-flink==2.0.0"
 # download flink connectors
 # flink-connector-kafka, flink-connector-jdbc and postgresql driver
